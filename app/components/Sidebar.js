@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useSidebar } from '@/app/providers';
 
 // Icons
 const ChevronRight = () => (
@@ -15,9 +16,9 @@ const ChevronDown = () => (
 
 const SidebarItem = ({ item, level = 0 }) => {
     const pathname = usePathname();
+    const { openFolders, toggleFolder } = useSidebar();
 
     // Helper to check if a path is active (robust against trailing slashes/basePath)
-    // defined here to use current pathname
     const checkActive = (path) => {
         if (!path) return false;
         const normalize = (p) => p?.replace(/\/+$/, '') || '';
@@ -29,13 +30,18 @@ const SidebarItem = ({ item, level = 0 }) => {
     const isActive = item.type === 'file' && checkActive(item.path);
     const isFolderActive = item.type === 'folder' && checkActive(item.path);
 
-    // Folders state
-    const [isOpen, setIsOpen] = useState(false);
+    // Unique ID for folder state management
+    const folderId = item.path || item.name;
+    const isOpen = openFolders[folderId] || false;
 
     // Auto-expand if child is active OR if the folder itself is the active page
     useEffect(() => {
         if (item.type === 'folder') {
-            const matchesPath = isFolderActive;
+            // If folder is active, ensure it's open
+            if (isFolderActive && !isOpen) {
+                toggleFolder(folderId, true);
+                return;
+            }
 
             const hasActiveChild = (children) => {
                 return children.some(child => {
@@ -48,38 +54,38 @@ const SidebarItem = ({ item, level = 0 }) => {
                 });
             };
 
-            if (matchesPath || hasActiveChild(item.children)) {
-                setIsOpen(true);
+            if (hasActiveChild(item.children) && !isOpen) {
+                toggleFolder(folderId, true);
             }
         }
-    }, [pathname, item, isFolderActive]); // checkActive dependency implied by re-render
+    }, [pathname, item, isFolderActive]);
 
     if (item.type === 'folder') {
         return (
             <div className="nav-group" style={{ marginBottom: level === 0 ? '24px' : '4px' }}>
                 <div className="nav-folder-header">
-                    {/* 1. Toggle Button (Always present for folders) */}
+                    {/* 1. Toggle Button */}
                     <button
-                        onClick={(e) => { e.preventDefault(); setIsOpen(!isOpen); }}
+                        onClick={(e) => { e.preventDefault(); toggleFolder(folderId); }}
                         className="nav-folder-toggle"
                         style={{ paddingLeft: level === 0 ? 0 : '12px' }}
                     >
                         <span className="icon-wrap">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
                     </button>
 
-                    {/* 2. Folder Title: Either a Link (if index exists) or text (if pure grouping) */}
+                    {/* 2. Folder Title */}
                     {item.path ? (
                         <Link
                             href={`/docs/${item.path}`}
                             className={`folder-title-link ${isFolderActive ? 'active' : ''}`}
-                            onClick={() => setIsOpen(true)} // Keep open when navigating to index
+                            onClick={() => toggleFolder(folderId, true)} // Ensure open when clicking link
                         >
                             {item.title}
                         </Link>
                     ) : (
                         <span
                             className="folder-title-text"
-                            onClick={() => setIsOpen(!isOpen)}
+                            onClick={() => toggleFolder(folderId)}
                         >
                             {item.title}
                         </span>
