@@ -15,30 +15,46 @@ const ChevronDown = () => (
 
 const SidebarItem = ({ item, level = 0 }) => {
     const pathname = usePathname();
-    const isActive = item.type === 'file' && `/docs/${item.path}` === pathname;
+
+    // Helper to check if a path is active (robust against trailing slashes/basePath)
+    // defined here to use current pathname
+    const checkActive = (path) => {
+        if (!path) return false;
+        const normalize = (p) => p?.replace(/\/+$/, '') || '';
+        const currentPath = normalize(pathname);
+        const target = normalize(`/docs/${path}`);
+        return currentPath === target || currentPath.endsWith(target);
+    };
+
+    const isActive = item.type === 'file' && checkActive(item.path);
+    const isFolderActive = item.type === 'folder' && checkActive(item.path);
 
     // Folders state
     const [isOpen, setIsOpen] = useState(false);
 
-    // Auto-expand if child is active
+    // Auto-expand if child is active OR if the folder itself is the active page
     useEffect(() => {
         if (item.type === 'folder') {
+            const matchesPath = isFolderActive;
+
             const hasActiveChild = (children) => {
                 return children.some(child => {
-                    if (child.type === 'file') return `/docs/${child.path}` === pathname;
-                    if (child.type === 'folder') return hasActiveChild(child.children);
+                    if (child.type === 'file') return checkActive(child.path);
+                    if (child.type === 'folder') {
+                        if (child.path && checkActive(child.path)) return true;
+                        return hasActiveChild(child.children);
+                    }
                     return false;
                 });
             };
-            if (hasActiveChild(item.children)) {
+
+            if (matchesPath || hasActiveChild(item.children)) {
                 setIsOpen(true);
             }
         }
-    }, [pathname, item]);
+    }, [pathname, item, isFolderActive]); // checkActive dependency implied by re-render
 
     if (item.type === 'folder') {
-        const isFolderActive = item.path && `/docs/${item.path}` === pathname;
-
         return (
             <div className="nav-group" style={{ marginBottom: level === 0 ? '24px' : '4px' }}>
                 <div className="nav-folder-header">
@@ -56,7 +72,7 @@ const SidebarItem = ({ item, level = 0 }) => {
                         <Link
                             href={`/docs/${item.path}`}
                             className={`folder-title-link ${isFolderActive ? 'active' : ''}`}
-                            onClick={() => setIsOpen(true)} // Optional: open on click too? User said clicking name opens "it" (the page)
+                            onClick={() => setIsOpen(true)} // Keep open when navigating to index
                         >
                             {item.title}
                         </Link>
