@@ -6,8 +6,10 @@ import CodeRenderer from '@/app/components/CodeRenderer';
 import Pagination from '@/app/components/Pagination';
 
 export async function generateStaticParams() {
-    const docs = getAllDocs();
-    return docs;
+    const docs = getFlattenedDocs();
+    return docs.map(doc => ({
+        slug: doc.path.split('/')
+    }));
 }
 
 export default async function DocPage({ params }) {
