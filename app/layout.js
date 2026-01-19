@@ -1,6 +1,6 @@
 import { Poppins } from 'next/font/google';
 import './globals.css';
-import { getDocTree, getFlattenedDocs } from '@/lib/docs';
+import { getDocsTreeNormalized, getFlattenedDocs } from '@/lib/api';
 import Sidebar from '@/app/components/Sidebar';
 import Providers from '@/app/providers';
 import Topbar from '@/app/components/Topbar';
@@ -16,8 +16,8 @@ export const metadata = {
   description: 'Documentation for BMDRM Project',
 };
 
-export default function RootLayout({ children }) {
-  const docTree = getDocTree();
+export default async function RootLayout({ children }) {
+  const docTree = await getDocsTreeNormalized();
   const allDocs = getFlattenedDocs(docTree);
 
   return (

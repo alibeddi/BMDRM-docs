@@ -7,6 +7,14 @@ This is the documentation website for the BMDRM project.
 - `app/`: Next.js application code.
 - `lib/`: Utility functions.
 
+## Features ✨
+- **Dynamic Routing**: Automatically generates pages from `docs/` folder structure.
+- **Interactive Sidebar**: Support for nested folders, index pages, and state persistence (remembers what you opened).
+- **Responsive Design**: Mobile-friendly layout with a collapsible menu and sticky Table of Contents.
+- **Dark Mode**: Fully supported dark/light theme switching based on system preference or user toggle.
+- **Static Export**: Pre-rendering for fast performance and compatibility with GitHub Pages.
+- **Navigation Helpers**: Breadcrumbs, Next/Previous pagination, and active link highlighting.
+
 ## How to Add Documentation
 1. Create a new `.md` file in the `docs` directory.
 2. Add the required frontmatter at the top of the file:

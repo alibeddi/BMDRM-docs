@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSidebar } from '@/app/providers';
 
 // Icons
@@ -24,41 +24,47 @@ const SidebarItem = ({ item, level = 0 }) => {
         const normalize = (p) => p?.replace(/\/+$/, '') || '';
         const currentPath = normalize(pathname);
         const target = normalize(`/docs/${path}`);
-        return currentPath === target || currentPath.endsWith(target);
+        return currentPath === target;
     };
 
     const isActive = item.type === 'file' && checkActive(item.path);
     const isFolderActive = item.type === 'folder' && checkActive(item.path);
 
-    // Unique ID for folder state management
-    const folderId = item.path || item.name;
+    // Unique ID for folder state management - Prefer ID, fallback to path or name
+    const folderId = item.id || item.path || item.name;
     const isOpen = openFolders[folderId] || false;
 
-    // Auto-expand if child is active OR if the folder itself is the active page
+    // Track previous pathname
+    const prevPathRef = useRef(null);
+
+    // Auto-expand logic (only on navigation)
     useEffect(() => {
-        if (item.type === 'folder') {
-            // If folder is active, ensure it's open
-            if (isFolderActive && !isOpen) {
-                toggleFolder(folderId, true);
-                return;
-            }
+        if (prevPathRef.current !== pathname) {
+            prevPathRef.current = pathname;
 
-            const hasActiveChild = (children) => {
-                return children.some(child => {
-                    if (child.type === 'file') return checkActive(child.path);
-                    if (child.type === 'folder') {
-                        if (child.path && checkActive(child.path)) return true;
-                        return hasActiveChild(child.children);
-                    }
-                    return false;
-                });
-            };
+            if (item.type === 'folder') {
+                if (isFolderActive && !isOpen) {
+                    toggleFolder(folderId, true);
+                    return;
+                }
 
-            if (hasActiveChild(item.children) && !isOpen) {
-                toggleFolder(folderId, true);
+                const hasActiveChild = (children) => {
+                    return children.some(child => {
+                        if (child.type === 'file') return checkActive(child.path);
+                        if (child.type === 'folder') {
+                            if (child.path && checkActive(child.path)) return true;
+                            return hasActiveChild(child.children);
+                        }
+                        return false;
+                    });
+                };
+
+                if (hasActiveChild(item.children)) {
+                    toggleFolder(folderId, true);
+                }
             }
         }
-    }, [pathname, item, isFolderActive]);
+    }, [pathname, item, isFolderActive, folderId, isOpen, toggleFolder]);
 
     if (item.type === 'folder') {
         return (
@@ -66,7 +72,11 @@ const SidebarItem = ({ item, level = 0 }) => {
                 <div className="nav-folder-header">
                     {/* 1. Toggle Button */}
                     <button
-                        onClick={(e) => { e.preventDefault(); toggleFolder(folderId); }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleFolder(folderId);
+                        }}
                         className="nav-folder-toggle"
                         style={{ paddingLeft: level === 0 ? 0 : '12px' }}
                     >
@@ -74,18 +84,26 @@ const SidebarItem = ({ item, level = 0 }) => {
                     </button>
 
                     {/* 2. Folder Title */}
-                    {item.path ? (
+                    {item.isClickable ? (
                         <Link
                             href={`/docs/${item.path}`}
                             className={`folder-title-link ${isFolderActive ? 'active' : ''}`}
-                            onClick={() => toggleFolder(folderId, true)} // Ensure open when clicking link
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFolder(folderId, true);
+                            }}
                         >
                             {item.title}
                         </Link>
                     ) : (
                         <span
                             className="folder-title-text"
-                            onClick={() => toggleFolder(folderId)}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleFolder(folderId);
+                            }}
+                            style={{ cursor: 'pointer' }}
                         >
                             {item.title}
                         </span>
@@ -95,7 +113,7 @@ const SidebarItem = ({ item, level = 0 }) => {
                 {isOpen && (
                     <div className="nav-folder-children">
                         {item.children.map(child => (
-                            <SidebarItem key={child.name} item={child} level={level + 1} />
+                            <SidebarItem key={child.id || child.name} item={child} level={level + 1} />
                         ))}
                     </div>
                 )}
@@ -109,6 +127,7 @@ const SidebarItem = ({ item, level = 0 }) => {
             href={`/docs/${item.path}`}
             className={`nav-item ${isActive ? 'active' : ''}`}
             style={{ paddingLeft: level === 0 ? '12px' : '24px' }}
+            onClick={(e) => e.stopPropagation()}
         >
             {item.title}
         </Link>
@@ -119,7 +138,7 @@ export default function Sidebar({ tree }) {
     return (
         <nav className="docs-nav">
             {tree.map(item => (
-                <SidebarItem key={item.name} item={item} />
+                <SidebarItem key={item.id || item.name} item={item} />
             ))}
         </nav>
     );
